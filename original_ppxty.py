@@ -8,7 +8,6 @@ from json import loads, dumps
 from random import getrandbits
 from websocket import WebSocket
 from requests import Session, get, post
-import mail
 
 class Perplexity:
     def __init__(self, email: str = None) -> None:
@@ -53,73 +52,19 @@ class Perplexity:
         else:
             self._login(email, perplexity_session)
     
-    def _login(self) -> None:
-        print("Début du processus de connexion")
-        domaine = mail.obtenir_domaine()
-        print(f"Domaine obtenu : {domaine}")
-        adresse, mot_de_passe = mail.generer_adresse_email(domaine)
-        print(f"Adresse email générée : {adresse}")
-        
-        print("Envoi de la demande de connexion à Perplexity")
-        self.session.post(url="https://www.perplexity.ai/api/auth/signin-email", data={"email": adresse})
-    
-        print("Obtention du token d'authentification")
-        token = mail.obtenir_token(adresse, mot_de_passe)
-        print("Token obtenu")
-        
-        print("Attente du lien de connexion")
-        email_link = mail.attendre_email_perplexity(token)
-        
-        if email_link:
-            print(f"Lien de connexion reçu : {email_link}")
-            self.session.get(email_link)
-        
-            ps = {}
-            try:
-                with open(".perplexity_session", "r") as f:
-                    ps = loads(f.read())
-            except FileNotFoundError:
-                print("Fichier de session non trouvé, création d'un nouveau")
-        
-            ps[adresse] = self.session.cookies.get_dict()
-        
-            with open(".perplexity_session", "w") as f:
-                f.write(dumps(ps))
-        
-            self.email = adresse
-            print("Connexion réussie")
-        else:
-            raise Exception("Échec de la réception du lien de connexion")        
-        domaine = mail.obtenir_domaine()
-        print(domaine)
-        adresse, mot_de_passe = mail.generer_adresse_email(domaine)
-        print(adresse,mot_de_passe)
-        self.session.post(url="https://www.perplexity.ai/api/auth/signin-email", data={"email": adresse})
-    
-        token = mail.obtenir_token(adresse, mot_de_passe)
-        print(token)
-        email_link = mail.attendre_email_perplexity(token)
-        print(email_link)
-    
-        if email_link:
-            self.session.get(email_link)
-        
-            ps = {}
-            with open(".perplexity_session", "r") as f:
-                try:
-                    ps = loads(f.read())
-                except:
-                    pass
-        
-            ps[adresse] = self.session.cookies.get_dict()
-        
-            with open(".perplexity_session", "w") as f:
-                f.write(dumps(ps))
-        
-            self.email = adresse
-        else:
-            raise Exception("Échec de la réception du lien de connexion")
+    def _login(self, email: str, ps: dict = None) -> None:
+        self.session.post(url="https://www.perplexity.ai/api/auth/signin-email", data={"email": email})
 
+        email_link: str = str(input("paste the link you received by email: "))
+        self.session.get(email_link)
+
+        if ps:
+            ps[email] = self.session.cookies.get_dict()
+        else:
+            ps = {email: self.session.cookies.get_dict()}
+
+        with open(".perplexity_session", "w") as f:
+            f.write(dumps(ps))
 
     def _init_session_without_login(self) -> None:
         self.session.get(url=f"https://www.perplexity.ai/search/{str(uuid4())}")
